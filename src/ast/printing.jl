@@ -96,6 +96,7 @@ function print_cmd(io::IO, arg::Argument, t::Terminal)
         printstyled(io, "::", arg.type; color)
     end
     arg.vararg && printstyled(io, "..."; color)
+    arg.require || printstyled(io, "=", arg.default; color)
     arg.require && printstyled(io, ">"; color)
     arg.require || printstyled(io, "]"; color)
     return
