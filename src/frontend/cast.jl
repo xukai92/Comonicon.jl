@@ -296,7 +296,7 @@ function parse_arguments(fn::JLFunction)
                 name = QuoteNode(name),
                 type = wrap_type(fn, type),
                 require = false,
-                default = emit_default_hint(value),
+                default = string(value),
             )
         elseif Meta.isexpr(each, :...) # :($name...)
             xcall(
@@ -354,15 +354,6 @@ function parse_required_kwargs!(flags, options, @nospecialize(expr))::Nothing
     return
 end
 
-function emit_default_hint(ex)
-    hint = string(ex)
-    return if length(hint) > 10
-        hint[1:7] * "..."
-    else
-        hint
-    end
-end
-
 function parse_optional_kwargs!(flags, options, kw_expr::Expr)::Nothing
     # expr == Expr(:kw, expr, value)
     expr = kw_expr.args[1]
@@ -370,7 +361,7 @@ function parse_optional_kwargs!(flags, options, kw_expr::Expr)::Nothing
     if expr isa Symbol # Expr(:kw, name::Symbol, value)
         push!(
             options,
-            xcall(Comonicon, :JLOption, QuoteNode(expr), false, Any, emit_default_hint(value)),
+            xcall(Comonicon, :JLOption, QuoteNode(expr), false, Any, string(value)),
         )
     elseif Meta.isexpr(expr, :(::)) # Expr(:kw, ($name::$type), value)
         name = expr.args[1]
@@ -392,7 +383,7 @@ function parse_optional_kwargs!(flags, options, kw_expr::Expr)::Nothing
                     QuoteNode(name),
                     false,
                     type,
-                    emit_default_hint(value) * "::" * string(type),
+                    string(value) * "::" * string(type),
                 ),
             )
         end
@@ -441,6 +432,7 @@ function codegen_create_entry(m::Module, line, @nospecialize(ex))
         configs.command.color,
         configs.command.static,
         configs.command.dash,
+        configs.command.hint_width,
     )
     quote
         $(codegen_entry_cmd(m::Module, line, cmd, configs, ex))

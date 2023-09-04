@@ -191,6 +191,7 @@ Configs for Command execution.
     width::Int = 120
     dash::Bool = true
     plugin::Bool = false
+    hint_width::Int = 10
 end
 
 """

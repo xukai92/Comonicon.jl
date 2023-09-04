@@ -6,8 +6,8 @@ using ExproniconLite
 using TOML: TOML
 using Configurations: Configurations
 
-function help_str(x; color = true, width::Int)
-    _sprint(print_cmd, x; color, displaysize = (24, width))
+function help_str(x; color = true, width::Int, hint_width::Int)
+    _sprint(print_cmd, x; color, displaysize = (24, width), hint_width)
 end
 
 Base.@kwdef struct Configs
@@ -16,6 +16,7 @@ Base.@kwdef struct Configs
     width::Int = 120
     dash::Bool = true
     plugin::Bool = false
+    hint_width::Int = 10
 end
 
 Base.@kwdef struct EmitContext
@@ -25,14 +26,15 @@ end
 
 function print_help_str(x, ctx::EmitContext)
     color = ctx.configs.color
+    hint_width = ctx.configs.hint_width
     if ctx.entry.root === x # print entry docstring
         x = ctx.entry
     end
 
     if ctx.configs.static
-        :($Base.print($(help_str(x; color, ctx.configs.width))))
+        :($Base.print($(help_str(x; color, ctx.configs.width, hint_width))))
     else
-        :($print_cmd(IOContext(stdout, :color => $color), $x))
+        :($print_cmd(IOContext(stdout, :color => $color, :hint_width => $hint_width), $x))
     end
 end
 

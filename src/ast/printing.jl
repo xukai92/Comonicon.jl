@@ -68,6 +68,19 @@ function Base.show(io::IO, ::MIME"text/plain", cmd::Description)
     print(io, cmd.content)
 end
 
+"only apply hint_width to the value part; this is what the original implementaiton does"
+function format_hint(hint, hint_width)
+    hint_split = split(hint, "::")
+    hint_value = hint_split[1]
+    rest = length(hint_split) > 1 ? ("::" * hint_split[2]) : ""
+    hint_value = if length(hint_value) > hint_width
+        hint_value[1:hint_width-3] * "..."
+    else
+        hint_value
+    end
+    hint_value * rest
+end
+
 """
     print_cmd([io::IO], cmd, [terminal::Terminal])
 
@@ -87,16 +100,20 @@ print_cmd(io::IO, cmd) =
     print_cmd(io, cmd, Terminal(width = get(io, :displaysize, displaysize(io))[2]))
 print_cmd(cmd, t::Terminal) = print_cmd(stdout, cmd, t)
 
+simplify_type(::T) where {T} = T
+simplify_type(::Type{Int32}) = "Int"
+simplify_type(::Type{Int64}) = "Int"
+
 function print_cmd(io::IO, arg::Argument, t::Terminal)
     color = t.color.args
     arg.require || printstyled(io, "["; color)
     arg.require && printstyled(io, "<"; color)
     printstyled(io, arg.name; color)
     if !ignore_type(arg.type)
-        printstyled(io, "::", arg.type; color)
+        printstyled(io, "::", simplify_type(arg.type); color)
     end
     arg.vararg && printstyled(io, "..."; color)
-    arg.require || printstyled(io, "=", arg.default; color)
+    arg.require || printstyled(io, "=", format_hint(arg.default, io.dict[:hint_width]); color)
     arg.require && printstyled(io, ">"; color)
     arg.require || printstyled(io, "]"; color)
     return
@@ -106,7 +123,7 @@ print_cmd(io::IO, cmd::Flag, t::Terminal) = _print_dash(io, cmd, t)
 
 function print_cmd(io::IO, cmd::Option, t::Terminal)
     _print_dash(io, cmd, t)
-    isnothing(cmd.hint) || printstyled(io, tab(1), "<", cmd.hint, ">"; color = t.color.args)
+    isnothing(cmd.hint) || printstyled(io, tab(1), "<", format_hint(cmd.hint, io.dict[:hint_width]), ">"; color = t.color.args)
     return
 end
 
@@ -265,9 +282,9 @@ function print_name_brief(io::IO, cmd, t::Terminal)
 end
 
 function print_with_brief(f, io::IO, cmd, t::Terminal)
-    buf = IOBuffer()
+    buf = IOContext(IOBuffer(), pairs(io.dict)...)
     f(buf, cmd, t)
-    s = String(take!(buf))
+    s = String(take!(buf.io))
 
     middle = t.width - t.left - t.right
     firstline = length(s) + 2
